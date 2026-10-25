@@ -1,10 +1,20 @@
 import machine
 import time_util
 from picovector import PicoVector
+import math
+
+
+def lerp_colour(progress, colour_a, colour_b):
+    return (
+        int(colour_a[0] + ((colour_b[0] - colour_a[0]) * progress)),
+        int(colour_a[1] + ((colour_b[1] - colour_a[1]) * progress)),
+        int(colour_a[2] + ((colour_b[2] - colour_a[2]) * progress))
+    )
 
 
 class DisplayController:
     FONT_COLOUR = (0x5f, 0x5f, 0x5f)
+    ORB_COLOUR = (0xdf, 0x30, 0x62)
     
     def __init__(self, presto, display):
         self.presto = presto
@@ -54,33 +64,54 @@ class DisplayController:
 
         return list(zip(groups, group_lengths))
 
-    def loop(self):
-        self.display.set_pen(0)
-        self.display.clear()
-
+    def draw_time(self):
         time_str = time_util.get_time_HHMM()
-        self.display.set_pen(self.display.create_pen(*self.FONT_COLOUR))
 
-        self.display.text("{}".format(self.i), 10, 10, scale=2)
-        self.i += 1
+        self.display.set_pen(self.display.create_pen(*self.FONT_COLOUR))
 
         _, _, w, h = self.time_font_draw.measure_text(time_str)
         self.time_font_draw.text(time_str, int(self.width - w - 10), int(10 + h))
 
+    def draw_meeting_text(self, meeting_title, meeting_time_str, progress):
         padding = 5
         
-        meeting = "Mobile Experience Stand-Up"
-        meeting_parts = self.word_wrap(meeting, self.next_up_font_draw)
-        
-        meeting_time = "15:00-15:15"
+        meeting_parts = self.word_wrap(meeting_title, self.next_up_font_draw)
         
         _, _, _, meeting_h = self.next_up_font_draw.measure_text(meeting_parts[0][0])
-        _, _, meeting_time_w, meeting_time_h = self.time_font_draw.measure_text(meeting_time)
+        _, _, meeting_time_w, meeting_time_h = self.time_font_draw.measure_text(meeting_time_str)
 
-        combined_height = (meeting_h * len(meeting_parts)) + (padding * (len(meeting_parts) - 1))
-        start_height = int((self.height - combined_height) / 2)
-        for i, (part, length) in enumerate(meeting_parts):
-            self.next_up_font_draw.text(part, int((self.width - length) / 2), int(start_height + (meeting_h * i + 1) + (padding * i)))
-        self.time_font_draw.text(meeting_time, int((self.width - meeting_time_w) / 2), int(start_height + (meeting_h * len(meeting_parts)) + (padding * (len(meeting_parts)))))
+        start_height = int(self.height * 0.35)
+        cursor = start_height
 
+        self.display.set_pen(self.display.create_pen(*lerp_colour(progress, self.FONT_COLOUR, (0xff, 0xff, 0xff))))
+
+        for (part, length) in meeting_parts:
+            x_pos = int((self.width - length) / 2)
+            cursor += meeting_h
+            self.next_up_font_draw.text(part, x_pos, int(cursor))
+            cursor += padding
+
+        self.time_font_draw.text(meeting_time_str, int((self.width - meeting_time_w) / 2), int(cursor + meeting_time_h + padding))
+
+    def draw_orb(self, progress):
+        black = (0x00, 0x00, 0x00)
+        draw_colour = lerp_colour(progress, black, self.ORB_COLOUR)
+
+        max_radius = int(math.sqrt(((self.width/2) ** 2) + ((self.height/2) ** 2)))
+
+        self.display.set_pen(self.display.create_pen(*draw_colour))
+        self.display.circle(int(self.width/2), int(self.height/2), int(max_radius * progress))
+        
+
+    def loop(self):
+        self.display.set_pen(0)
+        self.display.clear()
+
+        progress = (self.i % 25) / 25
+        self.i += 1
+
+        self.draw_orb(progress)
+        self.draw_time()
+        self.draw_meeting_text("Mobile Experience Stand-Up", "09:45-10:00", progress)
+        
         self.presto.update()
