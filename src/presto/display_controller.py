@@ -70,7 +70,19 @@ class DisplayController:
         self.display.set_pen(self.display.create_pen(*self.FONT_COLOUR))
 
         _, _, w, h = self.time_font_draw.measure_text(time_str)
-        self.time_font_draw.text(time_str, int(self.width - w - 10), int(10 + h))
+        min_pos = 10
+        max_pos = self.width - w - 10
+        
+        period = 10000
+        steps_taken = self.i % (2 * period)
+        progress = (self.i % period) / period
+        
+        if steps_taken < period:
+            pos = int(min_pos + ((max_pos - min_pos) * progress))
+        else:
+            pos = int(max_pos - ((max_pos - min_pos) * progress))
+        
+        self.time_font_draw.text(time_str, pos, int(10 + h))
 
     def draw_meeting_text(self, meeting_title, meeting_time_str, progress):
         padding = 5
