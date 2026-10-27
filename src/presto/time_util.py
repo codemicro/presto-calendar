@@ -1,5 +1,6 @@
 import machine
 import time
+import datetime
 
 
 _is_clock_init = False
@@ -22,3 +23,9 @@ def get_time_HHMM():
 
     _, _, _, _, hour, min, _, _ = machine.RTC().datetime()
     return "{:0>2}:{:0>2}".format(hour, min)
+
+
+def format_meeting_time(start_time, end_time):
+    _, _, _, start_hour, start_min, _, _, _ = datetime.datetime.fromtimestamp(start_time).timetuple()
+    _, _, _, end_hour, end_min, _, _, _ = datetime.datetime.fromtimestamp(end_time).timetuple()
+    return "{:0>2}:{:0>2}-{:0>2}:{:0>2}".format(start_hour, start_min, end_hour, end_min)

@@ -2,6 +2,7 @@ import machine
 import time_util
 from picovector import PicoVector
 import math
+import time
 
 
 def lerp_colour(progress, colour_a, colour_b):
@@ -16,7 +17,8 @@ class DisplayController:
     FONT_COLOUR = (0x5f, 0x5f, 0x5f)
     ORB_COLOUR = (0xdf, 0x30, 0x62)
     
-    def __init__(self, presto, display):
+    def __init__(self, comms, presto, display):
+        self.comms = comms
         self.presto = presto
         self.display = display
         self.time_font_draw = PicoVector(display)
@@ -82,7 +84,8 @@ class DisplayController:
         else:
             pos = int(max_pos - ((max_pos - min_pos) * progress))
         
-        self.time_font_draw.text(time_str, pos, int(10 + h))
+        # self.time_font_draw.text(time_str, pos, int(10 + h))
+        self.display.text(time_str, pos, int(10 + h), scale=2)
 
     def draw_meeting_text(self, meeting_title, meeting_time_str, progress):
         padding = 5
@@ -100,10 +103,12 @@ class DisplayController:
         for (part, length) in meeting_parts:
             x_pos = int((self.width - length) / 2)
             cursor += meeting_h
-            self.next_up_font_draw.text(part, x_pos, int(cursor))
+            # self.next_up_font_draw.text(part, x_pos, int(cursor))
+            self.display.text(part, x_pos, int(cursor), scale=2)
             cursor += padding
 
-        self.time_font_draw.text(meeting_time_str, int((self.width - meeting_time_w) / 2), int(cursor + meeting_time_h + padding))
+        # self.time_font_draw.text(meeting_time_str, int((self.width - meeting_time_w) / 2), int(cursor + meeting_time_h + padding))
+        self.display.text(meeting_time_str, int((self.width - meeting_time_w) / 2), int(cursor + meeting_time_h + padding), scale=2)
 
     def draw_orb(self, progress):
         black = (0x00, 0x00, 0x00)
@@ -122,8 +127,23 @@ class DisplayController:
         progress = (self.i % 25) / 25
         self.i += 1
 
-        self.draw_orb(progress)
-        self.draw_time()
-        self.draw_meeting_text("Mobile Experience Stand-Up", "09:45-10:00", progress)
+        next_meeting = self.comms.get_next_meeting()
+        if next_meeting is not None:
+            meeting_name, start_unix, end_unix = next_meeting
+
+            now = time.time()
+            ten_mins_before = start_unix - (10 * 60)
+            progress = max(0, ((10 * 60) - (start_unix - time.time())) / (10 * 60))
+            
+            if ten_mins_before < now:
+                self.draw_orb(progress)
+            
+            self.draw_time()
+            
+            self.draw_meeting_text(meeting_name, time_util.format_meeting_time(start_unix, end_unix), progress)
+        else:
+            self.draw_time()
+
+        self.display.text("{}".format(self.i), 10, 200, scale=2)
         
         self.presto.update()

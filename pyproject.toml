@@ -7,11 +7,6 @@ authors = [
     { name = "Abigail Pain", email = "abi@akpain.net" }
 ]
 requires-python = ">=3.14"
-dependencies = []
-
-[project.scripts]
-presto-calendar = "presto_calendar:main"
-
-[build-system]
-requires = ["uv_build>=0.12.20,<0.13.0"]
-build-backend = "uv_build"
+dependencies = [
+    "u-msgpack-python>=2.8.0",
+]
